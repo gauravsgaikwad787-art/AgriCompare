@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 .env.local
+# downloaded price file (made by npm run fetch-prices; published with npm run deploy)
+public/data/

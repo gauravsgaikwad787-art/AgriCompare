@@ -2,6 +2,16 @@
 <html lang="en" data-bs-theme="light">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // GitHub Pages: ".../AgriCompare" (no trailing slash) would load files from the wrong folder,
+      // so add the slash and keep the page (#/explorer etc.).
+      (function () {
+        var p = location.pathname;
+        if (p.length > 1 && p.slice(-1) !== '/' && p.split('/').pop().indexOf('.') === -1) {
+          location.replace(p + '/' + location.search + location.hash);
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AgriCompare - compare agricultural commodity prices across Maharashtra APMC markets." />
     <meta name="theme-color" content="#0D2419" />

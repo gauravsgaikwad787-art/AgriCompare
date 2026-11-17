@@ -6,8 +6,8 @@
 // so prices are loaded from one of two places, both on our own site:
 //   1. /api/mandi   - a proxy in the Vite server (npm run dev / npm run preview)
 //                     that calls data.gov.in with the key from .env
-//   2. data/prices.json - a snapshot of official prices saved by "npm run fetch-prices"
-//                     (runs automatically before "npm run deploy"); used on GitHub Pages
+//   2. data/prices.json - official prices downloaded by "npm run deploy" just before it
+//                     publishes the site; this is what the GitHub Pages site reads
 // If neither works, App.jsx shows clearly labelled sample data.
 import { parseApiDate } from '../utils.js';
 
@@ -78,7 +78,7 @@ async function fromSnapshot() {
   } catch {
     throw new Error('Could not load the saved price file.');
   }
-  if (!response.ok) throw new Error('No saved price file (run "npm run fetch-prices").');
+  if (!response.ok) throw new Error('No official price file was published with this site. Publish it again with "npm run deploy".');
   const json = await response.json();
   const records = clean(json.records || []);
   if (records.length === 0) throw new Error('The saved price file is empty.');

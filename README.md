@@ -38,7 +38,7 @@ each market's **most recent** price (`summariseByMarket` in `utils.js`). Every c
 how old it is ("today", "3 days ago").
 
 Collecting 30 days takes many requests, so the dev server caches the result for 30 minutes (the Refresh button
-skips the cache), and GitHub Pages uses the snapshot made by `npm run fetch-prices`. Run that command to see
+skips the cache), and the GitHub Pages site uses the price file downloaded by `npm run deploy`. Run that command to see
 how many records each crop has: it prints one line per crop.
 
 ### Where to sell
@@ -58,31 +58,42 @@ instead, where CORS does not apply:
 | Where the site runs | Where prices come from |
 |---|---|
 | `npm run dev` / `npm run preview` | `/api/mandi`, a small proxy inside the Vite server (`vite.config.js`) that calls data.gov.in with the key from `.env` |
-| GitHub Pages (no server) | `public/data/prices.json`, a snapshot of official prices saved by `npm run fetch-prices`, which runs automatically before `npm run deploy` |
+| GitHub Pages (no server) | `public/data/prices.json`, official prices downloaded on your computer by `npm run deploy` just before it publishes |
 
 A bonus: the API key stays on your computer and is never put into the website's JavaScript.
 To refresh the prices on the deployed site, run `npm run deploy` again (for example once a day).
 
 ## Deploy to GitHub Pages
 
-GitHub Pages must serve the **built** site (`dist/`), not the source. If Pages serves the source,
-the browser console shows `404 main.jsx` and the page stays blank.
+GitHub Pages only hosts files, so it must be given the **built** site (`dist/`), not the source code
+(if it gets the source, the browser console shows `404 main.jsx` and the page is blank). It also cannot run
+the price proxy, so the official prices are downloaded **on your computer** and published with the site.
+`npm run deploy` does all of this.
 
-**Recommended: automatic deploy with GitHub Actions** (`.github/workflows/deploy.yml`)
+**One-time setup**
 
-1. Push this folder so that `package.json` is at the root of the repository.
-2. On GitHub: **Settings > Pages > Build and deployment > Source: GitHub Actions**.
-3. **Settings > Secrets and variables > Actions > New repository secret**: name `DATA_GOV_API_KEY`,
-   value = your data.gov.in key.
-4. Push any change (or open the **Actions** tab and run "Deploy to GitHub Pages").
+1. Make sure `.env` contains `DATA_GOV_API_KEY=your_key` and that `npm run dev` shows **Official AGMARKNET data**.
+2. Run `npm run deploy` once (see below). It creates a `gh-pages` branch on GitHub.
+3. On GitHub: **Settings > Pages > Build and deployment > Source: Deploy from a branch**,
+   **Branch: `gh-pages`**, folder **`/ (root)`**, then **Save**.
 
-Every push rebuilds the site, and it also rebuilds every morning at 07:00 India time so the prices stay fresh.
-The site is published at `https://<your-username>.github.io/<repository-name>/`.
+**Every time you want to publish (or refresh the prices)**
 
-**Alternative: deploy from your computer**
+```
+npm run deploy
+```
 
-Run `npm run deploy` (it saves the latest prices with your `.env` key, builds, and pushes `dist/` to a
-`gh-pages` branch), then set **Settings > Pages > Source: Deploy from a branch > gh-pages / (root)**.
+It (1) downloads the latest official prices into `public/data/prices.json` using your `.env` key,
+(2) builds the site into `dist/`, and (3) pushes `dist/` to the `gh-pages` branch. After a minute or two the
+site at `https://<your-username>.github.io/<repository-name>/` shows the new prices; every card shows its
+reported date. Push your source code to `main` as usual with git; that does not change the published site.
+
+If no official prices can be downloaded and there is no earlier price file, the deploy **stops** with a message,
+so a site with only sample data is never published by mistake. If an earlier price file exists, it is reused
+and the message says from when.
+
+The published site keeps files from earlier deploys (`--add`), so a visitor whose browser still has an older
+page cached does not get a blank page after you redeploy.
 
 ## Pages
 
