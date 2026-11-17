@@ -6,7 +6,7 @@
 // With "--require" (used by npm run deploy) it refuses to continue if there are no
 // official prices at all, so a site with only sample data is never published by mistake.
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { COMMODITIES, fetchCommodity, readKey } from './agmarknet.mjs';
+import { COMMODITIES, fetchAllCrops, readKey } from './agmarknet.mjs';
 
 const REQUIRE = process.argv.includes('--require');
 const out = new URL('../public/data/prices.json', import.meta.url);
@@ -22,14 +22,6 @@ async function loadDotEnv() {
   } catch { /* no .env file */ }
 }
 
-// data.gov.in sometimes times out; try each crop twice before giving up.
-async function withRetry(job) {
-  try { return await job(); } catch (err) {
-    if (err.status === 401 || err.status === 403 || /No API key/.test(err.message)) throw err; // retrying will not help
-    await new Promise((r) => setTimeout(r, 3000));
-    return job();
-  }
-}
 
 async function previousSnapshot() {
   try {
@@ -41,19 +33,16 @@ async function previousSnapshot() {
 
 await loadDotEnv();
 const key = readKey(process.env);
-console.log('Downloading official AGMARKNET prices (this can take a minute)...');
+console.log('Downloading official AGMARKNET prices for the last 30 days (one request per day)...');
 
 try {
-  const results = await Promise.allSettled(COMMODITIES.map((c) => withRetry(() => fetchCommodity(key, c))));
-  results.forEach((r, i) => {
-    if (r.status === 'rejected') console.warn(`  ${COMMODITIES[i]}: FAILED - ${r.reason.message}`);
-    else console.log(`  ${COMMODITIES[i]}: ${r.value.length} records`);
-  });
-  const records = results.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value);
-  if (records.length === 0) {
-    const firstError = results.find((r) => r.status === 'rejected');
-    throw new Error(firstError ? firstError.reason.message : 'data.gov.in returned no Maharashtra records for these commodities.');
-  }
+  // One request per day for all crops (about 32 requests in total), with progress lines.
+  const started = Date.now();
+  const byCrop = await fetchAllCrops(key, { onProgress: (msg) => console.log(`  ${msg}`) });
+  console.log(`\nDone in ${Math.round((Date.now() - started) / 1000)} s:`);
+  COMMODITIES.forEach((c) => console.log(`  ${c}: ${byCrop[c].length} records`));
+  const records = COMMODITIES.flatMap((c) => byCrop[c]);
+  if (records.length === 0) throw new Error('data.gov.in returned no Maharashtra records for these crops.');
   await mkdir(new URL('../public/data/', import.meta.url), { recursive: true });
   await writeFile(out, JSON.stringify({ fetchedAt: new Date().toISOString(), records }));
   console.log(`Saved ${records.length} official records to public/data/prices.json`);

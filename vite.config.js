@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { COMMODITIES, fetchCommodity, readKey } from './scripts/agmarknet.mjs';
+import { COMMODITIES, fetchAllCrops, readKey } from './scripts/agmarknet.mjs';
 
 // A small server-side proxy at /api/mandi?commodity=Onion.
 // The browser cannot call api.data.gov.in directly (no CORS headers), so the
@@ -9,15 +9,18 @@ import { COMMODITIES, fetchCommodity, readKey } from './scripts/agmarknet.mjs';
 function mandiProxy(apiKey) {
   // Collecting 30 days takes many requests, so results are kept for 30 minutes.
   // "?refresh=1" (the site's Refresh button) skips the cache.
-  const cache = new Map(); // commodity -> { at, promise }
+  // All crops are downloaded together (one request per day) and shared by the six
+  // per-crop requests the page makes.
+  let cache = null; // { at, promise }
   const TTL = 30 * 60 * 1000;
-  const load = (commodity, refresh) => {
-    const hit = cache.get(commodity);
-    if (!refresh && hit && Date.now() - hit.at < TTL) return hit.promise;
-    const promise = fetchCommodity(apiKey, commodity);
-    cache.set(commodity, { at: Date.now(), promise });
-    promise.catch(() => cache.delete(commodity)); // never cache a failure
-    return promise;
+  const load = async (commodity, refresh) => {
+    const fresh = cache && Date.now() - cache.at < TTL && !(refresh && Date.now() - cache.at > 15000);
+    if (!fresh) {
+      const promise = fetchAllCrops(apiKey, { onProgress: (msg) => console.log(`[mandi proxy] ${msg}`) });
+      cache = { at: Date.now(), promise };
+      promise.catch(() => { cache = null; }); // never cache a failure
+    }
+    return (await cache.promise)[commodity];
   };
 
   const handler = async (req, res) => {
