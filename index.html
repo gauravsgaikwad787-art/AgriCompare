@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AgriCompare - compare agricultural commodity prices across Maharashtra APMC markets." />
+    <meta name="theme-color" content="#0D2419" />
+    <title>AgriCompare - APMC Mandi Price Comparison</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Poppins for the whole site (it also covers Hindi / Devanagari). -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Apply the saved theme before React loads, so the page does not flash.
+      try { if (JSON.parse(localStorage.getItem('agri_dark'))) document.documentElement.setAttribute('data-bs-theme', 'dark'); } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
