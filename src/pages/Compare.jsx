@@ -12,7 +12,9 @@ import WhereToSell from '../components/WhereToSell.jsx';
 
 export default function Compare({ data }) {
   const { t, lang } = useApp();
-  const [commodity, setCommodity] = useState('Onion');
+  // A link like #/compare?crop=Wheat (from the Explorer) opens on that crop.
+  const fromLink = new URLSearchParams(window.location.hash.split('?')[1] || '').get('crop');
+  const [commodity, setCommodity] = useState(COMMODITIES.includes(fromLink) ? fromLink : 'Onion');
   // If the default crop has no recent report, start on the first crop that does.
   useEffect(() => {
     if (!data.loading && data.crops.size && !data.crops.has(commodity)) {

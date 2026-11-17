@@ -647,3 +647,23 @@ h3, h4 { font-weight: 600; letter-spacing: -0.01em; }
 .brand > span { display: flex; flex-direction: column; gap: 2px; }
 .brand-name { line-height: 1.25; }
 .brand-tag { line-height: 1.35; }
+
+/* ---------- 18. Explorer market cards ---------- */
+.crop-rows { list-style: none; margin: 1rem 0 0; padding: 0; }
+.crop-rows li + li { border-top: 1px solid var(--ac-border); }
+.crop-rows a {
+  display: grid; grid-template-columns: auto 1fr auto auto; gap: .65rem; align-items: center;
+  padding: .6rem .5rem; margin: 0 -.5rem; border-radius: 12px; color: var(--ac-text); text-decoration: none;
+}
+.crop-rows a:hover { background: var(--ac-bg); }
+.crop-rows .cr-name { font-weight: 600; font-size: .9375rem; }
+.crop-rows .cr-age { font-size: .75rem; color: var(--ac-muted); }
+.crop-rows .cr-price { font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; min-width: 5.5rem; text-align: right; }
+.crop-rows li.is-focus a { background: var(--ac-sun-soft); }
+.crop-rows li.is-focus .cr-price { color: var(--ac-sun-dark); }
+.compare-hint {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1.25rem;
+  padding: 1rem 1.25rem; border-radius: var(--ac-radius-sm); background: var(--ac-sun-soft); border: 1px solid var(--ac-sun-line);
+  color: var(--ac-sun-dark); font-weight: 600;
+}
+@media (max-width: 575.98px) { .compare-hint .btn { margin-left: 0 !important; width: 100%; } }

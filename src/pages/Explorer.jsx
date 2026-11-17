@@ -1,82 +1,77 @@
+// Market Explorer: one card per APMC market, with the latest price of every crop it trades.
+// It answers "what is this mandi paying?". The Compare page answers "where should I sell
+// this one crop?", and every crop row here links to it.
 // Concept: live filtering (AJAX). Data arrives once through fetch(); typing in the
 // search box filters it in the browser, without reloading the page.
 import { useEffect, useMemo, useState } from 'react';
 import SearchFilter from '../components/SearchFilter.jsx';
-import CommodityCard, { CardSkeleton } from '../components/CommodityCard.jsx';
+import MarketCard from '../components/MarketCard.jsx';
+import { CardSkeleton } from '../components/CommodityCard.jsx';
 import DataBadge from '../components/DataBadge.jsx';
 import Icon from '../components/Icon.jsx';
-import { useDebounce, useLocalStorage } from '../hooks.js';
-import WhereToSell from '../components/WhereToSell.jsx';
+import { useDebounce } from '../hooks.js';
 import { useApp } from '../i18n.js';
 import { daysAgo, uniqueSorted } from '../utils.js';
 import { COMMODITIES } from '../services/api.js';
 
-const EMPTY = { q: '', crop: '', district: '', market: '', date: '', favOnly: false };
+const EMPTY = { q: '', crop: '', district: '', within: '', favOnly: false };
 const PAGE_SIZE = 12;
 const SORTS = {
-  high: (a, b) => b.modal - a.modal,
-  low: (a, b) => a.modal - b.modal,
-  name: (a, b) => a.market.localeCompare(b.market) || a.commodity.localeCompare(b.commodity),
+  recent: (a, b) => b.latest.localeCompare(a.latest) || a.market.localeCompare(b.market),
+  name: (a, b) => a.market.localeCompare(b.market),
+  crops: (a, b) => b.items.length - a.items.length || a.market.localeCompare(b.market),
 };
+
+// Group the per-crop rows into one entry per market.
+function groupByMarket(rows) {
+  const map = new Map();
+  rows.forEach((r) => {
+    const key = `${r.market}|${r.district}`;
+    if (!map.has(key)) map.set(key, { favId: `market|${r.market}`, market: r.market, district: r.district, items: [], latest: '', source: r.source });
+    const m = map.get(key);
+    m.items.push(r);
+    if (r.date > m.latest) m.latest = r.date;
+  });
+  map.forEach((m) => m.items.sort((a, b) => COMMODITIES.indexOf(a.commodity) - COMMODITIES.indexOf(b.commodity)));
+  return [...map.values()];
+}
 
 export default function Explorer({ data }) {
   const { t } = useApp();
   const [filters, setFilters] = useState(EMPTY);
-  const [sort, setSort] = useState('high');
+  const [sort, setSort] = useState('recent');
   const [visible, setVisible] = useState(PAGE_SIZE);
   const query = useDebounce(filters.q, 250).trim().toLowerCase();
 
-  // District and market lists narrow to the chosen crop and district.
-  const options = useMemo(() => {
-    const byCrop = data.rows.filter((r) => !filters.crop || r.commodity === filters.crop);
-    return {
-      districts: uniqueSorted(byCrop.map((r) => r.district)),
-      markets: uniqueSorted(byCrop.filter((r) => !filters.district || r.district === filters.district).map((r) => r.market)),
-      dates: uniqueSorted(byCrop.map((r) => r.date)).reverse(),
-      crops: data.crops,
-    };
-  }, [data.rows, data.crops, filters.crop, filters.district]);
+  const markets = useMemo(() => groupByMarket(data.rows), [data.rows]);
+  const options = useMemo(() => ({
+    districts: uniqueSorted(markets.map((m) => m.district)),
+    crops: data.crops,
+  }), [markets, data.crops]);
 
-  const filtered = useMemo(() => data.rows.filter((r) => (
-    (!query
-      || r.commodity.toLowerCase().includes(query)
-      || t(r.commodity).toLowerCase().includes(query)
-      || r.market.toLowerCase().includes(query)
-      || r.district.toLowerCase().includes(query)) &&
-    (!filters.crop || r.commodity === filters.crop) &&
-    (!filters.district || r.district === filters.district) &&
-    (!filters.market || r.market === filters.market) &&
-    (!filters.date || r.date === filters.date) &&
-    (!filters.favOnly || data.favs.includes(r.id))
-  )).sort(SORTS[sort]), [data.rows, data.favs, query, filters, sort, t]);
+  // A search that names a crop ("wheat", "गेहूँ") works like choosing that crop.
+  const searchedCrop = query.length >= 3
+    ? COMMODITIES.find((c) => c.toLowerCase().startsWith(query) || t(c).toLowerCase().startsWith(query))
+    : undefined;
+  const focusCrop = filters.crop || searchedCrop;
+
+  const filtered = useMemo(() => markets.filter((m) => (
+    (!query || searchedCrop
+      || m.market.toLowerCase().includes(query) || m.district.toLowerCase().includes(query)) &&
+    (!focusCrop || m.items.some((r) => r.commodity === focusCrop)) &&
+    (!filters.district || m.district === filters.district) &&
+    (!filters.within || daysAgo(m.latest) <= Number(filters.within)) &&
+    (!filters.favOnly || data.favs.includes(m.favId))
+  )).sort(SORTS[sort]), [markets, data.favs, query, searchedCrop, focusCrop, filters, sort]);
 
   useEffect(() => setVisible(PAGE_SIZE), [query, filters, sort]);
 
-  // Keep the market filter valid when the crop or district changes.
-  const setF = (next) => {
-    if (next.market) {
-      const ok = data.rows.some((r) => r.market === next.market
-        && (!next.district || r.district === next.district) && (!next.crop || r.commodity === next.crop));
-      if (!ok) next = { ...next, market: '' };
-    }
-    setFilters(next);
-  };
-
-  // Only count favourites that have a price in the data loaded now.
-  const favCount = useMemo(() => data.rows.filter((r) => data.favs.includes(r.id)).length, [data.rows, data.favs]);
-  const missingCrop = filters.crop && !data.crops.has(filters.crop)
-    ? filters.crop
-    : COMMODITIES.find((c) => query && !data.crops.has(c) && (c.toLowerCase().startsWith(query) || t(c).toLowerCase().startsWith(query)));
-  // The crop being looked at: the Crop filter, or a search that names a crop ("wheat", "गेहूँ").
-  const activeCrop = filters.crop || COMMODITIES.find((c) => query.length >= 3
-    && (c.toLowerCase().startsWith(query) || t(c).toLowerCase().startsWith(query)));
-  const [within, setWithin] = useLocalStorage('agri_within', 7);
-  const [district, setDistrict] = useLocalStorage('agri_district', '');
-  const cropRows = useMemo(() => (activeCrop ? data.rows.filter((r) => r.commodity === activeCrop) : []), [data.rows, activeCrop]);
-  const freshCropRows = useMemo(() => cropRows.filter((r) => daysAgo(r.date) <= within), [cropRows, within]);
-
+  // Only count favourite markets that are in the data loaded now.
+  const favCount = useMemo(() => markets.filter((m) => data.favs.includes(m.favId)).length, [markets, data.favs]);
+  const missingCrop = focusCrop && !data.crops.has(focusCrop) ? focusCrop : null;
   const active = Object.entries(filters).some(([, v]) => v);
   const failed = !data.loading && data.source === 'sample' && data.reason && !data.reason.startsWith('No API key');
+  const focusWord = focusCrop ? t(focusCrop) : '';
 
   return (
     <div className="container">
@@ -103,18 +98,22 @@ export default function Explorer({ data }) {
           </div>
         )}
 
-        <SearchFilter filters={filters} setFilters={setF} options={options} />
+        <SearchFilter filters={filters} setFilters={setFilters} options={options} />
 
-        {!data.loading && activeCrop && cropRows.length > 0 && (
-          <div className="mt-4">
-            <WhereToSell rows={freshCropRows} allRows={cropRows} commodity={activeCrop}
-              district={district} setDistrict={setDistrict} within={within} setWithin={setWithin} />
+        {/* Looking at one crop? Send the user to the Compare page for the ranking. */}
+        {!data.loading && focusCrop && data.crops.has(focusCrop) && (
+          <div className="compare-hint">
+            <Icon name="scale" size={18} />
+            <span>{t('compareHint', { c: focusWord })}</span>
+            <a className="btn btn-sm btn-primary ms-auto" href={`#/compare?crop=${encodeURIComponent(focusCrop)}`}>
+              {t('compareCrop', { c: focusWord })} <Icon name="arrowRight" size={14} />
+            </a>
           </div>
         )}
 
         <div className="results-bar">
           <h2 role="status" aria-live="polite">
-            {data.loading ? t('loadingData') : filtered.length === 1 ? t('reportedPrice') : t('reportedPrices', { n: filtered.length })}
+            {data.loading ? t('loadingData') : filtered.length === 1 ? t('marketFound') : t('marketsFound', { n: filtered.length })}
           </h2>
           <div className="d-flex flex-wrap gap-2 align-items-center">
             {active && (
@@ -124,15 +123,15 @@ export default function Explorer({ data }) {
             )}
             <button type="button" className={`btn btn-sm ${filters.favOnly ? 'btn-primary' : 'btn-secondary-ac'}`} aria-pressed={filters.favOnly}
               onClick={() => setFilters({ ...filters, favOnly: !filters.favOnly })}>
-              <Icon name="star" size={14} filled={filters.favOnly} />{t('favourites')}{favCount > 0 && <span className="num">({favCount})</span>}
+              <Icon name="star" size={14} filled={filters.favOnly} />{t('favMarkets')}{favCount > 0 && <span className="num">({favCount})</span>}
             </button>
             <label className="sort-select">
               <span className="visually-hidden">{t('sort')}</span>
               <Icon name="sort" size={15} className="t-muted" />
               <select className="form-select" value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="high">{t('sortHigh')}</option>
-                <option value="low">{t('sortLow')}</option>
+                <option value="recent">{t('sortRecent')}</option>
                 <option value="name">{t('sortName')}</option>
+                <option value="crops">{t('sortCrops')}</option>
               </select>
             </label>
           </div>
@@ -142,7 +141,7 @@ export default function Explorer({ data }) {
           <div className="row g-3 g-lg-4">
             {Array.from({ length: 6 }, (_, i) => <div className="col-12 col-md-6 col-lg-4" key={i}><CardSkeleton /></div>)}
           </div>
-        ) : filtered.length === 0 && missingCrop && !filters.favOnly ? (
+        ) : missingCrop && !filters.favOnly ? (
           <div className="state">
             <Icon name="info" size={28} />
             <h3>{t('noCropTitle', { c: t(missingCrop) })}</h3>
@@ -158,9 +157,9 @@ export default function Explorer({ data }) {
           </div>
         ) : (
           <div className="row g-3 g-lg-4">
-            {filtered.slice(0, visible).map((r) => (
-              <div className="col-12 col-md-6 col-lg-4" key={r.id}>
-                <CommodityCard row={r} isFav={data.favs.includes(r.id)} onToggleFav={data.toggleFav} />
+            {filtered.slice(0, visible).map((m) => (
+              <div className="col-12 col-md-6 col-lg-4" key={m.favId + m.district}>
+                <MarketCard market={m} focusCrop={focusCrop} isFav={data.favs.includes(m.favId)} onToggleFav={data.toggleFav} />
               </div>
             ))}
           </div>

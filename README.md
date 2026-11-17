@@ -65,11 +65,24 @@ To refresh the prices on the deployed site, run `npm run deploy` again (for exam
 
 ## Deploy to GitHub Pages
 
-1. Create a GitHub repository named `AgriCompare` and push this folder.
-2. In `package.json` set `"homepage"` to `https://<your-username>.github.io/AgriCompare/`.
-3. Run `npm run deploy` from your own computer (it saves the latest official prices using your `.env` key, builds,
-   then publishes `dist/` to the `gh-pages` branch).
-4. In the repo go to **Settings > Pages** and choose the `gh-pages` branch.
+GitHub Pages must serve the **built** site (`dist/`), not the source. If Pages serves the source,
+the browser console shows `404 main.jsx` and the page stays blank.
+
+**Recommended: automatic deploy with GitHub Actions** (`.github/workflows/deploy.yml`)
+
+1. Push this folder so that `package.json` is at the root of the repository.
+2. On GitHub: **Settings > Pages > Build and deployment > Source: GitHub Actions**.
+3. **Settings > Secrets and variables > Actions > New repository secret**: name `DATA_GOV_API_KEY`,
+   value = your data.gov.in key.
+4. Push any change (or open the **Actions** tab and run "Deploy to GitHub Pages").
+
+Every push rebuilds the site, and it also rebuilds every morning at 07:00 India time so the prices stay fresh.
+The site is published at `https://<your-username>.github.io/<repository-name>/`.
+
+**Alternative: deploy from your computer**
+
+Run `npm run deploy` (it saves the latest prices with your `.env` key, builds, and pushes `dist/` to a
+`gh-pages` branch), then set **Settings > Pages > Source: Deploy from a branch > gh-pages / (root)**.
 
 ## Pages
 
@@ -79,7 +92,7 @@ Back button, refresh and shared links all work, including on GitHub Pages.
 | Page | What it does |
 |------|--------------|
 | Home | What AgriCompare is, who it is for, a mandi price board, a quiet price ticker, features, how it works, where the data comes from, SDGs. No charts or statistics. |
-| Explorer | Search box, quick crop buttons, district / market / date / favourites filters, price cards (3, 2 or 1 per row), loading, empty and error states |
+| Explorer | One card per APMC market with the latest price of every crop it trades; search, crop, district and "reported within" filters, favourite markets; each crop links to Compare |
 | Compare | One crop across markets: summary strip, highest modal price highlighted, card or sortable table view, CSV export |
 | Analytics | Modal price bar chart (sideways on phones), a chart from your own numbers, and an illustrative 7-day trend that is always labelled as sample |
 | Alerts | Validated alert form (commodity, preferred market, threshold, above/below), saved alerts with status, edit and delete |
