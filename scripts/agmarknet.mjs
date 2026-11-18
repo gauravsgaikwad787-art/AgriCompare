@@ -1,7 +1,7 @@
 // Server-side (Node) access to the AGMARKNET dataset on data.gov.in.
 // The browser cannot call api.data.gov.in directly because the API does not send
-// CORS headers, so Node makes the request instead: the Vite dev/preview proxy
-// (vite.config.js) and the snapshot script (scripts/fetch-prices.mjs) both use this file.
+// CORS headers, so Node makes the request instead: the development-server proxy
+// (src/setupProxy.js) and the price download script (scripts/fetch-prices.mjs) both use this file.
 // The API key stays on your computer and is never put into the website's JavaScript.
 
 export const RESOURCE_URL = process.env.AGMARKNET_URL || 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070'; // AGMARKNET_URL is only for testing

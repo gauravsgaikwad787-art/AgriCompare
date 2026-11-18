@@ -2,7 +2,7 @@
 // and an illustrative line chart that is always labelled as sample data.
 import { useEffect, useMemo, useState } from 'react';
 import PriceChart from '../components/PriceChart.jsx';
-import DataBadge, { SourceTag } from '../components/DataBadge.jsx';
+import { SourceTag } from '../components/DataBadge.jsx';
 import Icon from '../components/Icon.jsx';
 import { COMMODITIES } from '../services/api.js';
 import { sampleHistory } from '../data/samplePrices.js';

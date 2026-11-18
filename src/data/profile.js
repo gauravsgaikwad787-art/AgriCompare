@@ -30,9 +30,10 @@ export const PROJECT = {
   summary:
     'A market price comparison website for Maharashtra APMC markets. It shows the latest reported prices for onion, tomato, potato, wheat, rice and soyabean from AGMARKNET (data.gov.in), and helps farmers see where they can sell for a better price.',
   course: 'Web Technology microproject',
-  college: 'Shah and Anchor Kutchhi Engineering College',
-  department: 'Computer Engineering',
-  year: 'SYCM - 1',
-  tech: ['HTML', 'CSS', 'JavaScript', 'React.js', 'Bootstrap 5', 'Chart.js', 'Fetch API', 'localStorage', 'Vite'],
+  college: '[College name, City]',
+  department: '[Department, e.g. Computer Engineering]',
+  year: '[Class and academic year, e.g. SE 2025–26]',
+  guide: '[Guide / teacher name]',
+  tech: ['HTML', 'CSS', 'JavaScript', 'React.js', 'Bootstrap 5', 'Chart.js', 'Fetch API', 'localStorage', 'Create React App'],
   repo: '', // optional: the GitHub repository link
 };

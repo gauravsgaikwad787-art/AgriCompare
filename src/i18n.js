@@ -257,8 +257,6 @@ Object.assign(STRINGS.en, {
   projEyebrow: 'A Web Technology microproject', projTitle: 'Better price access supports better livelihoods.',
   sdg2chip: 'SDG 2 · Zero Hunger', sdg8chip: 'SDG 8 · Decent Work',
 
-  exEyebrow: 'Market explorer', explorerTitle: 'Search reported APMC prices',
-  explorerSub: 'Filter Maharashtra market rates and save the places you watch most.',
   crop: 'Crop', allCrops: 'All crops', reportedPrices: '{n} reported prices', reportedPrice: '1 reported price',
   sort: 'Sort', sortHigh: 'Modal price: high to low', sortLow: 'Modal price: low to high', sortName: 'Market: A to Z',
   reportedOn: 'Reported {d}',
@@ -340,8 +338,6 @@ Object.assign(STRINGS.hi, {
   projEyebrow: 'वेब टेक्नोलॉजी माइक्रोप्रोजेक्ट', projTitle: 'भाव की बेहतर जानकारी, बेहतर आजीविका।',
   sdg2chip: 'SDG 2 · शून्य भूख', sdg8chip: 'SDG 8 · अच्छा काम',
 
-  exEyebrow: 'मंडी एक्सप्लोरर', explorerTitle: 'APMC भाव खोजें',
-  explorerSub: 'महाराष्ट्र की मंडियों के भाव छाँटें और अपनी पसंदीदा जगहें सहेजें।',
   crop: 'फसल', allCrops: 'सभी फसलें', reportedPrices: '{n} दर्ज भाव', reportedPrice: '1 दर्ज भाव',
   sort: 'क्रम', sortHigh: 'मोडल भाव: ज़्यादा से कम', sortLow: 'मोडल भाव: कम से ज़्यादा', sortName: 'मंडी: अ से ज्ञ',
   reportedOn: '{d} को दर्ज',

@@ -4,7 +4,7 @@
 //
 // The browser cannot call api.data.gov.in directly (the API sends no CORS headers),
 // so prices are loaded from one of two places, both on our own site:
-//   1. /api/mandi   - a proxy in the Vite server (npm run dev / npm run preview)
+//   1. /api/mandi   - a proxy in the development server (npm start, see src/setupProxy.js)
 //                     that calls data.gov.in with the key from .env
 //   2. data/prices.json - official prices downloaded by "npm run deploy" just before it
 //                     publishes the site; this is what the GitHub Pages site reads
@@ -46,7 +46,7 @@ const clean = (records) => records
   .map(normalise)
   .filter((r) => COMMODITIES.includes(r.commodity) && r.date && !Number.isNaN(r.modal) && r.modal > 0);
 
-// 1. Through the Vite server proxy: one request per commodity, in parallel.
+// 1. Through the development-server proxy (src/setupProxy.js): one request per commodity, in parallel.
 async function fromProxy(refresh) {
   const results = await Promise.allSettled(COMMODITIES.map(async (c) => {
     let response;
@@ -87,7 +87,7 @@ async function fromSnapshot() {
 
 // While developing, ask the live proxy first; on the deployed site, read the snapshot first.
 export async function loadOfficialPrices({ refresh = false } = {}) {
-  const order = import.meta.env.DEV ? [fromProxy, fromSnapshot] : [fromSnapshot, fromProxy];
+  const order = process.env.NODE_ENV === 'development' ? [fromProxy, fromSnapshot] : [fromSnapshot, fromProxy];
   const reasons = [];
   for (const attempt of order) {
     try {

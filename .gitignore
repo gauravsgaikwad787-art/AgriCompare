@@ -1,5 +1,5 @@
 node_modules
-dist
+/build
 .env
 .env.local
 # downloaded price file (made by npm run fetch-prices; published with npm run deploy)

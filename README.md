@@ -1,14 +1,21 @@
 # AgriCompare
 
 Agricultural commodity price comparison for Maharashtra APMC markets.
-Built with **React + Bootstrap 5 + Chart.js** (Vite), deployable to GitHub Pages.
+Built with **React (Create React App) + Bootstrap 5 + Chart.js**, published on GitHub Pages from the `main` branch.
 
 ## Run it
 
-```bash
-npm install
-npm run dev        # opens http://localhost:5173
 ```
+npm install
+npm start          # opens http://localhost:3000
+```
+
+| Command | What it does |
+|---|---|
+| `npm start` | Development server with live reload and the price proxy |
+| `npm run fetch-prices` | Downloads the latest official prices into `public/data/prices.json` |
+| `npm run build` | Builds the website into `docs/` |
+| `npm run deploy` | `fetch-prices` + `build` (stops if no official prices could be downloaded) |
 
 ## Load official prices
 
@@ -18,11 +25,11 @@ npm run dev        # opens http://localhost:5173
    DATA_GOV_API_KEY=your_key_here
    ```
    (The older name `VITE_DATA_GOV_API_KEY` also still works.)
-3. Restart `npm run dev`. The badge on Explorer, Compare and Analytics should say **Official AGMARKNET data**.
+3. Restart `npm start`. The badge on Explorer, Compare and Analytics should say **Official AGMARKNET data**.
    Without a key the site still works, using clearly labelled sample data.
 
 If the badge says **Sample data**, the text next to it gives the reason (no key, key rejected, data.gov.in
-did not respond, no records). The terminal running `npm run dev` also prints `[mandi proxy]` messages.
+did not respond, no records). The terminal running `npm start` also prints `[mandi proxy]` messages.
 
 Dataset used: *Current Daily Price of Various Commodities from Various Markets (Mandi)*
 (resource id `9ef84268-d588-465a-a308-a864a43d0070`), filtered to Maharashtra and six commodities.
@@ -37,7 +44,7 @@ Prices Data of Commodity* (resource `35985678-0d79-46b4-9ed6-6f13308a1d24`) for 
 each market's **most recent** price (`summariseByMarket` in `utils.js`). Every card shows its reported date and
 how old it is ("today", "3 days ago").
 
-Collecting 30 days takes many requests, so the dev server caches the result for 30 minutes (the Refresh button
+The development server caches the result for 30 minutes (the Refresh button
 skips the cache), and the GitHub Pages site uses the price file downloaded by `npm run deploy`. Run that command to see
 how many records each crop has: it prints one line per crop.
 
@@ -57,43 +64,36 @@ instead, where CORS does not apply:
 
 | Where the site runs | Where prices come from |
 |---|---|
-| `npm run dev` / `npm run preview` | `/api/mandi`, a small proxy inside the Vite server (`vite.config.js`) that calls data.gov.in with the key from `.env` |
+| `npm start` | `/api/mandi`, a small proxy inside the development server (`src/setupProxy.js`) that calls data.gov.in with the key from `.env` |
 | GitHub Pages (no server) | `public/data/prices.json`, official prices downloaded on your computer by `npm run deploy` just before it publishes |
 
 A bonus: the API key stays on your computer and is never put into the website's JavaScript.
 To refresh the prices on the deployed site, run `npm run deploy` again (for example once a day).
 
-## Deploy to GitHub Pages
+## Deploy to GitHub Pages (one branch: `main`)
 
-GitHub Pages only hosts files, so it must be given the **built** site (`dist/`), not the source code
-(if it gets the source, the browser console shows `404 main.jsx` and the page is blank). It also cannot run
-the price proxy, so the official prices are downloaded **on your computer** and published with the site.
-`npm run deploy` does all of this.
+GitHub Pages only hosts files, so it is given the **built** website, which lives in the `docs/` folder of the
+`main` branch. GitHub Pages also cannot run the price proxy, so the official prices are downloaded **on your
+computer** during `npm run deploy` and published with the website.
 
-**One-time setup**
+**One-time setup on GitHub:** **Settings > Pages > Build and deployment > Source: Deploy from a branch**,
+**Branch: `main`**, folder **`/docs`**, then **Save**.
 
-1. Make sure `.env` contains `DATA_GOV_API_KEY=your_key` and that `npm run dev` shows **Official AGMARKNET data**.
-2. Run `npm run deploy` once (see below). It creates a `gh-pages` branch on GitHub.
-3. On GitHub: **Settings > Pages > Build and deployment > Source: Deploy from a branch**,
-   **Branch: `gh-pages`**, folder **`/ (root)`**, then **Save**.
-
-**Every time you want to publish (or refresh the prices)**
+**Every time you want to publish (or refresh the prices):**
 
 ```
 npm run deploy
+git add .
+git commit -m "Publish website"
+git push
 ```
 
-It (1) downloads the latest official prices into `public/data/prices.json` using your `.env` key,
-(2) builds the site into `dist/`, and (3) pushes `dist/` to the `gh-pages` branch. After a minute or two the
-site at `https://<your-username>.github.io/<repository-name>/` shows the new prices; every card shows its
-reported date. Push your source code to `main` as usual with git; that does not change the published site.
+`npm run deploy` (1) downloads the latest official prices with your `.env` key, (2) builds the website and
+(3) puts it in `docs/`. Pushing `main` publishes it; after a minute or two the site at
+`https://<your-username>.github.io/<repository-name>/` shows the new prices.
 
 If no official prices can be downloaded and there is no earlier price file, the deploy **stops** with a message,
-so a site with only sample data is never published by mistake. If an earlier price file exists, it is reused
-and the message says from when.
-
-The published site keeps files from earlier deploys (`--add`), so a visitor whose browser still has an older
-page cached does not get a blank page after you redeploy.
+so a website with only sample data is never published by mistake. If an earlier price file exists, it is reused.
 
 ## Pages
 
@@ -119,7 +119,7 @@ Theme: based on the **Solstice** WordPress theme by Automattic (GPLv2 or later),
 
 | Concept | Where it is used |
 |---------|------------------|
-| REST API with Fetch | `src/services/api.js` (browser), `scripts/agmarknet.mjs` (server-side call to data.gov.in), `vite.config.js` (proxy) |
+| REST API with Fetch | `src/services/api.js` (browser), `scripts/agmarknet.mjs` (server-side call to data.gov.in), `src/setupProxy.js` (development proxy) |
 | AJAX live filtering | `pages/Explorer.jsx`, `components/SearchFilter.jsx`, `hooks.js` (useDebounce) |
 | Bootstrap grid | `pages/Home.jsx`, `pages/Explorer.jsx`, `pages/Compare.jsx` (container / row / col-*) |
 | Navbar and cards | `components/Navbar.jsx`, `components/CommodityCard.jsx` |
