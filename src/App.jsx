@@ -18,7 +18,7 @@ import { summariseAll } from './utils.js';
 export const PAGES = ['home', 'explorer', 'compare', 'analytics', 'alerts', 'about'];
 
 // Pages live in the URL hash (#/compare), so Back/Forward and refresh work,
-// and the site still runs from any GitHub Pages sub-folder.
+// and the site works on any static host (Vercel, or a sub-folder).
 const pageFromHash = () => {
   const key = window.location.hash.replace(/^#\/?/, '').split('?')[0];
   return PAGES.includes(key) ? key : 'home';

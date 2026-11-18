@@ -1,7 +1,7 @@
 # AgriCompare
 
 Agricultural commodity price comparison for Maharashtra APMC markets.
-Built with **React (Create React App) + Bootstrap 5 + Chart.js**, published on GitHub Pages from the `main` branch.
+Built with **React (Create React App) + Bootstrap 5 + Chart.js**, hosted on **Vercel** with a small server function for live prices.
 
 ## Run it
 
@@ -12,36 +12,32 @@ npm start          # opens http://localhost:3000
 
 | Command | What it does |
 |---|---|
-| `npm start` | Development server with live reload (downloads the recent-days file first if it is old) |
-| `npm run build` | Downloads the recent-days prices, then builds the website into `docs/` (for GitHub Pages) |
-| `npm run fetch-prices` | Downloads the recent-days prices only |
+| `npm start` | Development server; `/api/mandi` runs locally through `src/setupProxy.js` |
+| `npm run build` | Production build into `build/` (Vercel runs this itself) |
 
-## Load official prices
+## Official prices (live)
 
 1. Register at https://data.gov.in and copy your API key (a long string of letters and numbers).
-2. Copy `.env.example` to `.env` and put the key after the equals sign (no quotes, no spaces):
+2. **For `npm start`:** copy `.env.example` to `.env` and put the key after the equals sign:
    ```
-   REACT_APP_DATA_GOV_API_KEY=your_key_here
+   DATA_GOV_API_KEY=your_key_here
    ```
-3. Restart `npm start`. The badge on Explorer, Compare and Analytics should say **Official AGMARKNET data**.
-   Without a key the site still works, using clearly labelled sample data, and the badge says why.
+3. **For the live website:** add the same variable in Vercel (see below).
 
-Official prices come from two places, which are combined (`src/services/api.js`):
+How it works:
 
-- **Today (live):** the browser loads *Current Daily Price of Various Commodities from Various Markets (Mandi)*
-  straight from the data.gov.in REST API every time the site opens (saved for 30 minutes; the **Refresh**
-  button on Analytics loads again).
-- **The previous 7 days:** *Variety-wise Daily Market Prices Data of Commodity* does not allow browser requests
-  (CORS), so `scripts/fetch-prices.mjs` downloads it into `public/data/prices.json` **automatically before every
-  `npm run build`** (and before `npm start` if the file is missing or older than 6 hours). The file is published
-  with the website. If the download fails, the build still finishes and keeps the previous file.
-
-Each market keeps its most recent price (`summariseByMarket` in `utils.js`), so today's live price is used where it
-exists and crops not reported today still show a recent price. Every card shows the reported date and its age.
-
-**About the key:** Create React App builds `REACT_APP_` variables into the website, so anyone can see the key with
-the browser tools. Use a free key that you can regenerate on data.gov.in if it is misused. `.env` itself is in
-`.gitignore`, so it is not uploaded to GitHub.
+- The website asks its own server function, **`/api/mandi`** (`api/mandi.js`). Vercel runs it on its server in
+  **Mumbai** (`vercel.json`).
+- The function loads **today's prices** (*Current Daily Price of Various Commodities from Various Markets (Mandi)*)
+  and the **previous 7 days** (*Variety-wise Daily Market Prices Data of Commodity*) from the data.gov.in REST API,
+  one request per day for all Maharashtra crops, and keeps the six project crops (`scripts/agmarknet.mjs`).
+- Because it runs on a server, browser CORS rules do not apply, and the **API key stays secret**: it is never
+  sent to the browser.
+- Vercel keeps each answer for **30 minutes**, so visitors get it instantly and data.gov.in is asked at most about
+  twice an hour. The browser also keeps a copy for 30 minutes.
+- Each market keeps its most recent price (`summariseByMarket` in `utils.js`); every card shows the reported date
+  and its age. If prices cannot be loaded, clearly labelled sample data is shown with the reason.
+- A time budget makes sure the function always answers within Vercel's limit, even if data.gov.in is slow.
 
 ### Where to sell
 
@@ -49,28 +45,23 @@ On the Compare page, the **Where to sell** panel (`components/WhereToSell.jsx`) 
 price. Choose **your district** to see its best market and how much more per quintal the best market elsewhere is
 reporting. Distance, transport and market fees are not in the data, so the panel reminds users to check them.
 
-## Deploy to GitHub Pages (one branch: `main`)
+## Deploy on Vercel
 
-GitHub Pages serves the built website from the `docs/` folder of the `main` branch.
+**One-time setup**
 
-**One-time setup on GitHub:** **Settings > Pages > Build and deployment > Source: Deploy from a branch**,
-**Branch: `main`**, folder **`/docs`**, then **Save**.
+1. Sign in at https://vercel.com with your GitHub account.
+2. **Add New > Project**, choose this repository, then **Import**. Vercel detects Create React App; keep the
+   suggested settings (build command `npm run build`, output directory `build`).
+3. Before deploying, open **Environment Variables** and add `DATA_GOV_API_KEY` = your key.
+4. Click **Deploy**. The site is published at `https://<project-name>.vercel.app`.
 
-**When you change the code or text, or want to refresh the previous days' prices** (today's prices load live by themselves):
-
-```
-npm run build
-git add .
-git commit -m "Update website"
-git push
-```
-
-Make sure `.env` contains your key **before** `npm run build`, because the key is built into the website.
+**Every change after that:** commit and push to `main`. Vercel builds and publishes automatically, usually within a
+minute. Today's prices refresh by themselves; nothing needs to be rebuilt for new prices.
 
 ## Pages
 
 The site is one React app. Pages live in the URL hash (`#/explorer`, `#/compare`, ...), so the browser's
-Back button, refresh and shared links all work, including on GitHub Pages.
+Back button, refresh and shared links all work on any static host.
 
 | Page | What it does |
 |------|--------------|
@@ -91,7 +82,7 @@ Theme: based on the **Solstice** WordPress theme by Automattic (GPLv2 or later),
 
 | Concept | Where it is used |
 |---------|------------------|
-| REST API with Fetch | `src/services/api.js` (today's prices in the browser), `scripts/agmarknet.mjs` (previous days, before the build) |
+| REST API with Fetch | `src/services/api.js` (browser asks `/api/mandi`), `api/mandi.js` + `scripts/agmarknet.mjs` (server calls data.gov.in) |
 | AJAX live filtering | `pages/Explorer.jsx`, `components/SearchFilter.jsx`, `hooks.js` (useDebounce) |
 | Bootstrap grid | `pages/Home.jsx`, `pages/Explorer.jsx`, `pages/Compare.jsx` (container / row / col-*) |
 | Navbar and cards | `components/Navbar.jsx`, `components/CommodityCard.jsx` |
@@ -103,7 +94,7 @@ Theme: based on the **Solstice** WordPress theme by Automattic (GPLv2 or later),
 | Live clock (Date + DOM methods) | `components/LiveClock.jsx` (Home, "Where the prices come from") |
 | Data source badge with fallback reason | `components/DataBadge.jsx`, `App.jsx` (loadLive) |
 | Dark mode and English / Hindi | `App.jsx`, `i18n.js`, `style.css` |
-| Web resume + GitHub Pages | `pages/About.jsx`, `data/profile.js`, deploy steps above |
+| About page + hosting | `pages/About.jsx`, `data/profile.js`, Vercel steps above |
 
 ## Team
 

@@ -1,8 +1,6 @@
-// Node access to the AGMARKNET datasets on data.gov.in, used by scripts/fetch-prices.mjs,
-// which runs automatically before "npm run build" (and "npm start").
-// Today's prices are loaded live by the browser (src/services/api.js); the previous days
-// come from the variety-wise dataset, which does not allow browser requests (CORS), so
-// they are downloaded here and saved as public/data/prices.json.
+// Server-side access to the AGMARKNET datasets on data.gov.in.
+// Used by the Vercel function api/mandi.js (live website) and by src/setupProxy.js ("npm start").
+// It runs on a server, so browser CORS rules do not apply and the API key stays secret.
 
 export const RESOURCE_URL = process.env.AGMARKNET_URL || 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070'; // AGMARKNET_URL is only for testing
 
@@ -36,12 +34,14 @@ const PAGE = 2000; // rows per request; more rows are fetched page by page
 // Returns { Onion: [...records], Tomato: [...], ... } in the current-feed shape. Every record
 // keeps its real arrival date; the site keeps each market's most recent one (utils.js).
 // onProgress(message) is called as days complete (used by fetch-prices to print progress).
-export async function fetchAllCrops(apiKey, { state = 'Maharashtra', days = HISTORY_DAYS, history = true, onProgress } = {}) {
+// net: { timeoutMs, retries } for each request (historyNet for the previous days). deadline: a time (ms) after which no more days are
+// fetched, so the function always answers in time; the days already fetched are still returned.
+export async function fetchAllCrops(apiKey, { state = 'Maharashtra', days = HISTORY_DAYS, history = true, onProgress, net = {}, historyNet = net, deadline = Infinity } = {}) {
   const sameState = (r) => String(r.state).trim().toLowerCase() === state.toLowerCase();
 
   // 1. Today's feed, all crops at once. data.gov.in has used two spellings for the state filter.
-  let today = await requestAll(RESOURCE_URL, apiKey, { 'filters[state.keyword]': state });
-  if (today.length === 0) today = await requestAll(RESOURCE_URL, apiKey, { 'filters[state]': state });
+  let today = await requestAll(RESOURCE_URL, apiKey, { 'filters[state.keyword]': state }, net);
+  if (today.length === 0) today = await requestAll(RESOURCE_URL, apiKey, { 'filters[state]': state }, net);
   onProgress?.(`Today's feed: ${keepOurCrops(today).length} records`);
 
   // 2. The last `days` days, one request per day for all crops, a few days at a time.
@@ -54,10 +54,10 @@ export async function fetchAllCrops(apiKey, { state = 'Maharashtra', days = HIST
       let done = 0;
       let failedDays = 0;
       const perDay = await pool(dates, 3, async (date) => {
-        if (refused) return [];
+        if (refused || Date.now() > deadline) return [];
         let rows = [];
         try {
-          rows = (await requestAll(HISTORY_URL, apiKey, { [stateKey]: state, 'filters[Arrival_Date]': date })).map(toCurrentShape);
+          rows = (await requestAll(HISTORY_URL, apiKey, { [stateKey]: state, 'filters[Arrival_Date]': date }, historyNet)).map(toCurrentShape);
         } catch (err) {
           if (err.status === 401 || err.status === 403) refused = true;
           failedDays++;
@@ -88,10 +88,10 @@ function keepOurCrops(rows) {
 }
 
 // Fetch every page of a query (data.gov.in returns at most PAGE rows per request).
-async function requestAll(url, apiKey, filters) {
+async function requestAll(url, apiKey, filters, net = {}) {
   const all = [];
   for (let offset = 0; ; offset += PAGE) {
-    const rows = await request(url, apiKey, filters, { limit: PAGE, offset });
+    const rows = await request(url, apiKey, filters, { limit: PAGE, offset, ...net });
     all.push(...rows);
     if (rows.length < PAGE || offset >= 20 * PAGE) return all; // last page (or a safety stop)
   }
@@ -171,9 +171,9 @@ function getJSON(url, timeoutMs) {
   });
 }
 
-async function request(url, apiKey, filters, { limit = 500, offset = 0, timeoutMs = 45000 } = {}) {
+async function request(url, apiKey, filters, { limit = 500, offset = 0, timeoutMs = 45000, retries = RETRIES } = {}) {
   if (!apiKey) {
-    const err = new Error('No API key found. Add DATA_GOV_API_KEY to the .env file and restart the server.');
+    const err = new Error('No API key found. Set DATA_GOV_API_KEY (in .env for npm start, or in the Vercel project settings).');
     err.status = 500;
     throw err;
   }
@@ -182,7 +182,7 @@ async function request(url, apiKey, filters, { limit = 500, offset = 0, timeoutM
   const full = `${url}?${params}`;
 
   let lastError;
-  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const { status, json } = await slot(() => getJSON(full, timeoutMs));
       if (status === 401 || status === 403) {
@@ -199,7 +199,7 @@ async function request(url, apiKey, filters, { limit = 500, offset = 0, timeoutM
     } catch (cause) {
       if (cause.final) throw cause;
       lastError = cause;
-      if (attempt < RETRIES) await sleep(3000 * attempt); // 3 s, then 6 s
+      if (attempt < retries) await sleep(2000 * attempt); // 2 s, then 4 s
     }
   }
   const timedOut = lastError?.code === 'TIMEOUT' || lastError?.code === 'ETIMEDOUT';

@@ -1,0 +1,9 @@
+{
+  "regions": ["bom1"],
+  "functions": {
+    "api/mandi.js": {
+      "maxDuration": 60,
+      "includeFiles": "scripts/agmarknet.mjs"
+    }
+  }
+}

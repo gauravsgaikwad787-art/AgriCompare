@@ -275,7 +275,7 @@ Object.assign(STRINGS.en, {
   qtlShort: '₹ / quintal', addPrice: 'Add price',
   ownNote: 'Your entries stay in this browser and are not sent to AGMARKNET.',
   trendTitle: 'Seven-day sample trend',
-  anFoot: 'Official prices come from AGMARKNET via data.gov.in. On GitHub Pages, the latest fetched price file is published when the site is deployed. When official results are unavailable, sample data is clearly marked.',
+  anFoot: 'Official prices come from AGMARKNET via data.gov.in: today’s prices plus the previous 7 days, refreshed about every 30 minutes. When official results are unavailable, sample data is clearly marked.',
 
   alEyebrow: 'Target price alerts', alertsTitle: 'Know when your price is reached',
   alertsSub: 'Save a crop and market target. AgriCompare checks it against the latest reported price.',
@@ -356,7 +356,7 @@ Object.assign(STRINGS.hi, {
   qtlShort: '₹ / क्विंटल', addPrice: 'भाव जोड़ें',
   ownNote: 'आपके आँकड़े इसी ब्राउज़र में रहते हैं और AGMARKNET को नहीं भेजे जाते।',
   trendTitle: '7 दिन का नमूना रुझान',
-  anFoot: 'आधिकारिक भाव AGMARKNET से data.gov.in के ज़रिए आते हैं। GitHub Pages पर साइट डिप्लॉय करते समय ताज़ा भाव फ़ाइल प्रकाशित होती है। आधिकारिक भाव न मिलने पर नमूना डेटा पर साफ़ लेबल होता है।',
+  anFoot: 'आधिकारिक भाव AGMARKNET से data.gov.in के ज़रिए आते हैं: आज के भाव और पिछले 7 दिन, लगभग हर 30 मिनट में ताज़ा। आधिकारिक भाव न मिलने पर नमूना डेटा पर साफ़ लेबल होता है।',
 
   alEyebrow: 'लक्ष्य भाव अलर्ट', alertsTitle: 'जानें कि आपका भाव कब मिला',
   alertsSub: 'फसल और मंडी का लक्ष्य सहेजें। AgriCompare उसे ताज़ा दर्ज भाव से जाँचता है।',

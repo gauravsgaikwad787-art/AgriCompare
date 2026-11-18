@@ -1,60 +1,39 @@
-// Development-only proxy for "npm start" (Create React App runs this file automatically).
-// The browser cannot call api.data.gov.in directly (the API sends no CORS headers), so the
-// development server makes the request instead and adds the key from .env. The key never
-// reaches the browser. It answers /api/mandi?commodity=Onion with that crop's records.
-//
-// All crops are downloaded together (one request per day for the last 30 days) and kept for
-// 30 minutes; "?refresh=1" (the site's Refresh button) downloads again.
+// Development only ("npm start"): serves /api/mandi on the local development server by running
+// the same function that Vercel runs (api/mandi.js). Create React App runs this file itself.
+// The key is read from .env (DATA_GOV_API_KEY) and never reaches the browser.
+// Answers are kept for 30 minutes, like the Vercel CDN does on the live site.
 const fs = require('fs');
 const path = require('path');
 
-const COMMODITIES = ['Onion', 'Tomato', 'Potato', 'Wheat', 'Rice', 'Soyabean'];
-const TTL = 30 * 60 * 1000;
-
-// Read DATA_GOV_API_KEY from .env (Create React App only exposes REACT_APP_ variables itself).
-function readEnvKey() {
-  if (process.env.DATA_GOV_API_KEY) return process.env.DATA_GOV_API_KEY.trim();
+function loadKeyFromDotEnv() {
+  if (process.env.DATA_GOV_API_KEY) return;
   try {
     const text = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8');
-    const line = text.split(/\r?\n/).find((l) => /^\s*(DATA_GOV_API_KEY|VITE_DATA_GOV_API_KEY)\s*=/.test(l));
-    return line ? line.split('=').slice(1).join('=').trim().replace(/^["']|["']$/g, '') : '';
-  } catch {
-    return '';
-  }
+    const line = text.split(/\r?\n/).find((l) => /^\s*DATA_GOV_API_KEY\s*=/.test(l));
+    if (line) process.env.DATA_GOV_API_KEY = line.split('=').slice(1).join('=').trim().replace(/^["']|["']$/g, '');
+  } catch { /* no .env file */ }
 }
 
 module.exports = function setupProxy(app) {
-  const apiKey = readEnvKey();
-  let cache = null; // { at, promise }
+  loadKeyFromDotEnv();
+  const handler = require('../api/mandi.js');
+  let cached = null; // { at, status, body }
 
-  // scripts/agmarknet.mjs is an ES module, so it is loaded with import().
-  const load = async (commodity, refresh) => {
-    const fresh = cache && Date.now() - cache.at < TTL && !(refresh && Date.now() - cache.at > 15000);
-    if (!fresh) {
-      const promise = import('../scripts/agmarknet.mjs')
-        .then(({ fetchAllCrops }) => fetchAllCrops(apiKey, { onProgress: (msg) => console.log(`[mandi proxy] ${msg}`) }));
-      cache = { at: Date.now(), promise };
-      promise.catch(() => { cache = null; }); // never cache a failure
-    }
-    return (await cache.promise)[commodity];
-  };
-
-  app.use('/api/mandi', async (req, res) => {
-    const url = new URL(req.originalUrl, 'http://localhost');
-    const commodity = url.searchParams.get('commodity');
-    res.setHeader('Content-Type', 'application/json');
-    if (!COMMODITIES.includes(commodity)) {
-      res.statusCode = 400;
-      res.end(JSON.stringify({ error: 'Unknown commodity.' }));
+  app.get('/api/mandi', async (req, res) => {
+    if (cached && Date.now() - cached.at < 30 * 60 * 1000) {
+      res.status(cached.status).json(cached.body);
       return;
     }
-    try {
-      const records = await load(commodity, url.searchParams.get('refresh') === '1');
-      res.end(JSON.stringify({ records }));
-    } catch (err) {
-      console.warn(`[mandi proxy] ${commodity}: ${err.message}`);
-      res.statusCode = err.status || 502;
-      res.end(JSON.stringify({ error: err.message }));
-    }
+    // Capture the function's answer so it can be cached here.
+    const capture = {
+      headers: {},
+      setHeader(k, v) { this.headers[k] = v; },
+      status(code) { this.code = code; return this; },
+      json(body) {
+        if (this.code === 200) cached = { at: Date.now(), status: 200, body };
+        res.status(this.code).json(body);
+      },
+    };
+    await handler(req, capture);
   });
 };
