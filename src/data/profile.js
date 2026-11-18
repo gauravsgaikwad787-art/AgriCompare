@@ -32,7 +32,7 @@ export const PROJECT = {
   course: 'Web Technology microproject',
   college: 'Shah And Anchor Kutchhi Engineering College',
   department: 'Computer Engineering',
-  year: 'SYCM -1',
+  year: 'SYCM - 1',
   tech: ['HTML', 'CSS', 'JavaScript', 'React.js', 'Bootstrap 5', 'Chart.js', 'Fetch API', 'localStorage'],
   repo: '', // optional: the GitHub repository link
 };
