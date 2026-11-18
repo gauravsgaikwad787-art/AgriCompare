@@ -12,88 +12,57 @@ npm start          # opens http://localhost:3000
 
 | Command | What it does |
 |---|---|
-| `npm start` | Development server with live reload and the price proxy |
-| `npm run fetch-prices` | Downloads the latest official prices into `public/data/prices.json` |
-| `npm run build` | Builds the website into `docs/` |
-| `npm run deploy` | `fetch-prices` + `build` (stops if no official prices could be downloaded) |
+| `npm start` | Development server with live reload |
+| `npm run build` | Builds the website into `docs/` (for GitHub Pages) |
 
 ## Load official prices
 
 1. Register at https://data.gov.in and copy your API key (a long string of letters and numbers).
 2. Copy `.env.example` to `.env` and put the key after the equals sign (no quotes, no spaces):
    ```
-   DATA_GOV_API_KEY=your_key_here
+   REACT_APP_DATA_GOV_API_KEY=your_key_here
    ```
-   (The older name `VITE_DATA_GOV_API_KEY` also still works.)
 3. Restart `npm start`. The badge on Explorer, Compare and Analytics should say **Official AGMARKNET data**.
-   Without a key the site still works, using clearly labelled sample data.
+   Without a key the site still works, using clearly labelled sample data, and the badge says why.
 
-If the badge says **Sample data**, the text next to it gives the reason (no key, key rejected, data.gov.in
-did not respond, no records). The terminal running `npm start` also prints `[mandi proxy]` messages.
+The browser loads the prices straight from the data.gov.in REST API (`src/services/api.js`):
 
-Dataset used: *Current Daily Price of Various Commodities from Various Markets (Mandi)*
-(resource id `9ef84268-d588-465a-a308-a864a43d0070`), filtered to Maharashtra and six commodities.
-Sample data is illustrative, not official, and is always labelled. Official prices are updated periodically,
-not in real time.
+- *Current Daily Price of Various Commodities from Various Markets (Mandi)* for the latest day, and
+- *Variety-wise Daily Market Prices Data of Commodity* for the **previous 7 days**, because a market reports
+  a crop only on days it is traded.
 
-### Latest prices from the last 30 days
+One request per day brings every crop in Maharashtra (about 8 requests, 4 at a time, with automatic retries),
+and the six project crops are kept. The result is saved in the browser for 30 minutes, so reloading is instant;
+the **Refresh** button on the Analytics page downloads again. Each market keeps its most recent price
+(`summariseByMarket` in `utils.js`), and every card shows the reported date and how old it is.
 
-The "Current Daily Price" feed only holds the **latest day's** reports, and a market reports a crop only on days
-it is actually traded. So AgriCompare also reads AGMARKNET's historical dataset *Variety-wise Daily Market
-Prices Data of Commodity* (resource `35985678-0d79-46b4-9ed6-6f13308a1d24`) for the **last 30 days** and keeps
-each market's **most recent** price (`summariseByMarket` in `utils.js`). Every card shows its reported date and
-how old it is ("today", "3 days ago").
-
-The development server caches the result for 30 minutes (the Refresh button
-skips the cache), and the GitHub Pages site uses the price file downloaded by `npm run deploy`. Run that command to see
-how many records each crop has: it prints one line per crop.
+**About the key:** Create React App builds `REACT_APP_` variables into the website, so anyone can see the key with
+the browser tools. Use a free key that you can regenerate on data.gov.in if it is misused. `.env` itself is in
+`.gitignore`, so it is not uploaded to GitHub.
 
 ### Where to sell
 
-On Compare, and on Explorer when a crop is chosen (or typed, e.g. "wheat"), the **Where to sell** panel
-(`components/WhereToSell.jsx`) ranks markets by their latest modal price. Rankings default to the **last 7 days**
-so an old price cannot beat a recent one; switch to 30 days if a crop is rarely reported. Choose **your district**
-to see its best market and how much more per quintal the best market elsewhere is reporting. Distance, transport
-and market fees are not in the data, so the panel reminds users to check them.
-
-### Why prices go through a proxy (CORS)
-
-The browser is not allowed to read responses from `api.data.gov.in` directly, because the API does not send
-CORS headers. Calling it from the page fails with "Could not reach the API". So the request is made by Node
-instead, where CORS does not apply:
-
-| Where the site runs | Where prices come from |
-|---|---|
-| `npm start` | `/api/mandi`, a small proxy inside the development server (`src/setupProxy.js`) that calls data.gov.in with the key from `.env` |
-| GitHub Pages (no server) | `public/data/prices.json`, official prices downloaded on your computer by `npm run deploy` just before it publishes |
-
-A bonus: the API key stays on your computer and is never put into the website's JavaScript.
-To refresh the prices on the deployed site, run `npm run deploy` again (for example once a day).
+On the Compare page, the **Where to sell** panel (`components/WhereToSell.jsx`) ranks markets by their latest modal
+price. Choose **your district** to see its best market and how much more per quintal the best market elsewhere is
+reporting. Distance, transport and market fees are not in the data, so the panel reminds users to check them.
 
 ## Deploy to GitHub Pages (one branch: `main`)
 
-GitHub Pages only hosts files, so it is given the **built** website, which lives in the `docs/` folder of the
-`main` branch. GitHub Pages also cannot run the price proxy, so the official prices are downloaded **on your
-computer** during `npm run deploy` and published with the website.
+GitHub Pages serves the built website from the `docs/` folder of the `main` branch.
 
 **One-time setup on GitHub:** **Settings > Pages > Build and deployment > Source: Deploy from a branch**,
 **Branch: `main`**, folder **`/docs`**, then **Save**.
 
-**Every time you want to publish (or refresh the prices):**
+**When you change the code or text** (not needed for new prices: the site loads them by itself):
 
 ```
-npm run deploy
+npm run build
 git add .
-git commit -m "Publish website"
+git commit -m "Update website"
 git push
 ```
 
-`npm run deploy` (1) downloads the latest official prices with your `.env` key, (2) builds the website and
-(3) puts it in `docs/`. Pushing `main` publishes it; after a minute or two the site at
-`https://<your-username>.github.io/<repository-name>/` shows the new prices.
-
-If no official prices can be downloaded and there is no earlier price file, the deploy **stops** with a message,
-so a website with only sample data is never published by mistake. If an earlier price file exists, it is reused.
+Make sure `.env` contains your key **before** `npm run build`, because the key is built into the website.
 
 ## Pages
 
@@ -119,7 +88,7 @@ Theme: based on the **Solstice** WordPress theme by Automattic (GPLv2 or later),
 
 | Concept | Where it is used |
 |---------|------------------|
-| REST API with Fetch | `src/services/api.js` (browser), `scripts/agmarknet.mjs` (server-side call to data.gov.in), `src/setupProxy.js` (development proxy) |
+| REST API with Fetch | `src/services/api.js` (loads AGMARKNET prices from data.gov.in in the browser) |
 | AJAX live filtering | `pages/Explorer.jsx`, `components/SearchFilter.jsx`, `hooks.js` (useDebounce) |
 | Bootstrap grid | `pages/Home.jsx`, `pages/Explorer.jsx`, `pages/Compare.jsx` (container / row / col-*) |
 | Navbar and cards | `components/Navbar.jsx`, `components/CommodityCard.jsx` |

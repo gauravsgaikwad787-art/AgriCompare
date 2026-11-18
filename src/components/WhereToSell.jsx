@@ -9,13 +9,12 @@ import Icon from './Icon.jsx';
 const TOP = 5;
 
 /**
- * rows      : summarised rows for ONE crop (latest price per market), already limited to the time window
- * allRows   : the same crop over the whole 30 days (to fill the district list)
+ * rows      : summarised rows for ONE crop (latest price per market)
+ * allRows   : the same crop, all loaded days (to fill the district list)
  * commodity : crop name
  * district / setDistrict : the user's district (remembered by the parent)
- * within / setWithin     : 7 or 30 days
  */
-export default function WhereToSell({ rows, allRows, commodity, district, setDistrict, within, setWithin }) {
+export default function WhereToSell({ rows, allRows, commodity, district, setDistrict }) {
   const { t, lang } = useApp();
   const ranked = useMemo(() => [...rows].sort((a, b) => b.modal - a.modal), [rows]);
   const districts = useMemo(() => uniqueSorted(allRows.map((r) => r.district)), [allRows]);
@@ -39,20 +38,12 @@ export default function WhereToSell({ rows, allRows, commodity, district, setDis
               {districts.map((d) => <option key={d}>{d}</option>)}
             </select>
           </div>
-          <div>
-            <span className="form-label d-block">{t('within')}</span>
-            <div className="segmented" role="group" aria-label={t('within')}>
-              <button type="button" aria-pressed={within === 7} onClick={() => setWithin(7)}>{t('last7')}</button>
-              <button type="button" aria-pressed={within === 30} onClick={() => setWithin(30)}>{t('last30')}</button>
-            </div>
-          </div>
         </div>
       </div>
 
       {ranked.length === 0 ? (
         <div className="sell-empty">
           <p className="mb-2">{t('noFresh', { c: crop })}</p>
-          {within === 7 && <button type="button" className="btn btn-sm btn-secondary-ac" onClick={() => setWithin(30)}>{t('showOlder')}</button>}
         </div>
       ) : (
         <>

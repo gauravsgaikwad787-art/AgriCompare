@@ -6,7 +6,7 @@ import DataBadge, { SourceTag } from '../components/DataBadge.jsx';
 import Icon from '../components/Icon.jsx';
 import { COMMODITIES } from '../services/api.js';
 import { useApp } from '../i18n.js';
-import { daysAgo, downloadCSV, formatDate, formatINR, todayISO } from '../utils.js';
+import { downloadCSV, formatDate, formatINR, todayISO } from '../utils.js';
 import { useLocalStorage } from '../hooks.js';
 import WhereToSell from '../components/WhereToSell.jsx';
 
@@ -25,14 +25,13 @@ export default function Compare({ data }) {
   const [view, setView] = useState('cards');
   const [allCards, setAllCards] = useState(false);
 
-  // Each market's latest price for this crop (last 30 days), and the part inside the chosen window.
-  const [within, setWithin] = useLocalStorage('agri_within', 7);
+  // Each market's latest price for this crop (from the days loaded by services/api.js).
   const [district, setDistrict] = useLocalStorage('agri_district', '');
   const allForCrop = useMemo(
     () => data.rows.filter((r) => r.commodity === commodity).sort((a, b) => b.modal - a.modal),
     [data.rows, commodity]
   );
-  const list = useMemo(() => allForCrop.filter((r) => daysAgo(r.date) <= within), [allForCrop, within]);
+  const list = allForCrop;
   const best = list[0];
   const lowest = list[list.length - 1];
   const latest = list.reduce((d, r) => (r.date > d ? r.date : d), '');
@@ -100,12 +99,7 @@ export default function Compare({ data }) {
                 </div>
               </div>
             ) : (
-              allForCrop.length > 0 ? (
-                <div className="state h-100"><Icon name="info" size={28} /><h3>{t('noFresh', { c: t(commodity) })}</h3>
-                  <button type="button" className="btn btn-secondary-ac" onClick={() => setWithin(30)}>{t('showOlder')}</button></div>
-              ) : (
-                <div className="state h-100"><Icon name="info" size={28} /><h3>{t('noCropTitle', { c: t(commodity) })}</h3><p className="mb-0">{t('noCropText', { c: t(commodity) })}</p></div>
-              )
+              <div className="state h-100"><Icon name="info" size={28} /><h3>{t('noCropTitle', { c: t(commodity) })}</h3><p className="mb-0">{t('noCropText', { c: t(commodity) })}</p></div>
             )}
           </div>
         </div>
@@ -113,7 +107,7 @@ export default function Compare({ data }) {
         {!data.loading && allForCrop.length > 0 && (
           <div className="mb-4">
             <WhereToSell rows={list} allRows={allForCrop} commodity={commodity}
-              district={district} setDistrict={setDistrict} within={within} setWithin={setWithin} />
+              district={district} setDistrict={setDistrict} />
           </div>
         )}
 

@@ -4,9 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && node scripts/to-docs.mjs",
-    "fetch-prices": "node scripts/fetch-prices.mjs",
-    "deploy": "npm run fetch-prices -- --require && npm run build"
+    "build": "react-scripts build && node scripts/to-docs.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",

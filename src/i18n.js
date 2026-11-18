@@ -224,7 +224,7 @@ export const STRINGS = {
 
 // ---- Wording for the warm "solstice" layout (added on top of the dictionary above) ----
 Object.assign(STRINGS.en, {
-  loadingData: 'Collecting the latest prices from the last 30 days…',
+  loadingData: 'Loading the latest prices from data.gov.in…',
   today: 'today', yesterday: 'yesterday', daysAgo: '{n} days ago',
   sellEyebrow: 'Where to sell', sellTitle: 'Best places to sell {c}',
   sellSub: 'Markets ranked by their latest reported modal price.',
@@ -240,7 +240,7 @@ Object.assign(STRINGS.en, {
   latestReport: 'Latest report',
   noRecent: 'no recent report', missingLine: 'Not reported recently: {list}.',
   noCropTitle: 'No {c} prices reported recently',
-  noCropText: 'Maharashtra APMC markets have not reported {c} in the last 30 days of AGMARKNET data. A price appears only on days a crop is actually traded and reported, so check again later or choose another crop.',
+  noCropText: 'Maharashtra APMC markets have not reported {c} in the last 7 days of AGMARKNET data. A price appears only on days a crop is actually traded and reported, so check again later or choose another crop.',
   searchLabel: 'Search', perQtlUnit: '/ quintal', topMarkets: 'Top markets', showAllCards: 'Show all {n} markets',
   navExplore: 'Explore prices', navCompare: 'Compare markets', tagline: 'Maharashtra APMC prices',
   unitPill: 'Prices shown in ₹ per quintal',
@@ -305,7 +305,7 @@ Object.assign(STRINGS.en, {
 });
 
 Object.assign(STRINGS.hi, {
-  loadingData: 'पिछले 30 दिनों के ताज़ा भाव जुटाए जा रहे हैं…',
+  loadingData: 'data.gov.in से ताज़ा भाव लोड हो रहे हैं…',
   today: 'आज', yesterday: 'कल', daysAgo: '{n} दिन पहले',
   sellEyebrow: 'कहाँ बेचें', sellTitle: '{c} बेचने की सबसे अच्छी जगहें',
   sellSub: 'मंडियाँ उनके ताज़ा दर्ज मोडल भाव के क्रम में।',
@@ -321,7 +321,7 @@ Object.assign(STRINGS.hi, {
   latestReport: 'ताज़ा भाव की तारीख',
   noRecent: 'हाल में भाव नहीं', missingLine: 'हाल में भाव दर्ज नहीं: {list}।',
   noCropTitle: 'हाल में {c} का कोई भाव दर्ज नहीं',
-  noCropText: 'महाराष्ट्र की APMC मंडियों ने पिछले 30 दिनों के AGMARKNET डेटा में {c} का भाव दर्ज नहीं किया है। भाव तभी आता है जब उस दिन फसल का व्यापार होकर दर्ज हो, इसलिए बाद में फिर देखें या कोई दूसरी फसल चुनें।',
+  noCropText: 'महाराष्ट्र की APMC मंडियों ने पिछले 7 दिनों के AGMARKNET डेटा में {c} का भाव दर्ज नहीं किया है। भाव तभी आता है जब उस दिन फसल का व्यापार होकर दर्ज हो, इसलिए बाद में फिर देखें या कोई दूसरी फसल चुनें।',
   searchLabel: 'खोजें', perQtlUnit: '/ क्विंटल', topMarkets: 'शीर्ष मंडियाँ', showAllCards: 'सभी {n} मंडियाँ दिखाएँ',
   navExplore: 'भाव देखें', navCompare: 'मंडियों की तुलना', tagline: 'महाराष्ट्र APMC भाव',
   unitPill: 'भाव ₹ प्रति क्विंटल में',

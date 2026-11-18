@@ -14,11 +14,14 @@ export function formatDate(iso, lang = 'en') {
   });
 }
 
-// The API sends dates as "DD/MM/YYYY"; we store ISO so dates sort correctly.
+// The API sends dates as "DD/MM/YYYY" (sometimes "YYYY-MM-DD"); we store ISO so dates sort correctly.
 export function parseApiDate(s) {
   if (!s) return '';
-  const [d, m, y] = s.split('/');
-  return `${y}-${m}-${d}`;
+  const text = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const [d, m, y] = text.split('/');
+  if (!y) return '';
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
 }
 
 export const uniqueSorted = (arr) => [...new Set(arr)].filter(Boolean).sort();
