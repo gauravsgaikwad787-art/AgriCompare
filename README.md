@@ -12,8 +12,9 @@ npm start          # opens http://localhost:3000
 
 | Command | What it does |
 |---|---|
-| `npm start` | Development server with live reload |
-| `npm run build` | Builds the website into `docs/` (for GitHub Pages) |
+| `npm start` | Development server with live reload (downloads the recent-days file first if it is old) |
+| `npm run build` | Downloads the recent-days prices, then builds the website into `docs/` (for GitHub Pages) |
+| `npm run fetch-prices` | Downloads the recent-days prices only |
 
 ## Load official prices
 
@@ -25,16 +26,18 @@ npm start          # opens http://localhost:3000
 3. Restart `npm start`. The badge on Explorer, Compare and Analytics should say **Official AGMARKNET data**.
    Without a key the site still works, using clearly labelled sample data, and the badge says why.
 
-The browser loads the prices straight from the data.gov.in REST API (`src/services/api.js`):
+Official prices come from two places, which are combined (`src/services/api.js`):
 
-- *Current Daily Price of Various Commodities from Various Markets (Mandi)* for the latest day, and
-- *Variety-wise Daily Market Prices Data of Commodity* for the **previous 7 days**, because a market reports
-  a crop only on days it is traded.
+- **Today (live):** the browser loads *Current Daily Price of Various Commodities from Various Markets (Mandi)*
+  straight from the data.gov.in REST API every time the site opens (saved for 30 minutes; the **Refresh**
+  button on Analytics loads again).
+- **The previous 7 days:** *Variety-wise Daily Market Prices Data of Commodity* does not allow browser requests
+  (CORS), so `scripts/fetch-prices.mjs` downloads it into `public/data/prices.json` **automatically before every
+  `npm run build`** (and before `npm start` if the file is missing or older than 6 hours). The file is published
+  with the website. If the download fails, the build still finishes and keeps the previous file.
 
-One request per day brings every crop in Maharashtra (about 8 requests, 4 at a time, with automatic retries),
-and the six project crops are kept. The result is saved in the browser for 30 minutes, so reloading is instant;
-the **Refresh** button on the Analytics page downloads again. Each market keeps its most recent price
-(`summariseByMarket` in `utils.js`), and every card shows the reported date and how old it is.
+Each market keeps its most recent price (`summariseByMarket` in `utils.js`), so today's live price is used where it
+exists and crops not reported today still show a recent price. Every card shows the reported date and its age.
 
 **About the key:** Create React App builds `REACT_APP_` variables into the website, so anyone can see the key with
 the browser tools. Use a free key that you can regenerate on data.gov.in if it is misused. `.env` itself is in
@@ -53,7 +56,7 @@ GitHub Pages serves the built website from the `docs/` folder of the `main` bran
 **One-time setup on GitHub:** **Settings > Pages > Build and deployment > Source: Deploy from a branch**,
 **Branch: `main`**, folder **`/docs`**, then **Save**.
 
-**When you change the code or text** (not needed for new prices: the site loads them by itself):
+**When you change the code or text, or want to refresh the previous days' prices** (today's prices load live by themselves):
 
 ```
 npm run build
@@ -88,7 +91,7 @@ Theme: based on the **Solstice** WordPress theme by Automattic (GPLv2 or later),
 
 | Concept | Where it is used |
 |---------|------------------|
-| REST API with Fetch | `src/services/api.js` (loads AGMARKNET prices from data.gov.in in the browser) |
+| REST API with Fetch | `src/services/api.js` (today's prices in the browser), `scripts/agmarknet.mjs` (previous days, before the build) |
 | AJAX live filtering | `pages/Explorer.jsx`, `components/SearchFilter.jsx`, `hooks.js` (useDebounce) |
 | Bootstrap grid | `pages/Home.jsx`, `pages/Explorer.jsx`, `pages/Compare.jsx` (container / row / col-*) |
 | Navbar and cards | `components/Navbar.jsx`, `components/CommodityCard.jsx` |

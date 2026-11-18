@@ -2,3 +2,5 @@ node_modules
 /build
 .env
 .env.local
+# recent prices file (downloaded before each build; the published copy is in docs/data)
+public/data/

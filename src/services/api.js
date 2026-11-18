@@ -1,10 +1,12 @@
 // Concept: REST API integration with the Fetch API.
-// The browser loads the official AGMARKNET prices straight from the data.gov.in API:
-//   - "Current Daily Price of Various Commodities from Various Markets (Mandi)": the latest day
-//   - "Variety-wise Daily Market Prices Data of Commodity": the previous days (HISTORY_DAYS)
-// One request per day brings every crop in Maharashtra; we keep our six crops.
-// Results are saved in the browser for 30 minutes, so reloading the page is instant.
-// If the prices cannot be loaded, App.jsx shows clearly labelled sample data.
+// Official AGMARKNET prices come from two places, which are combined:
+//   1. LIVE: the browser loads today's prices straight from the data.gov.in API
+//      ("Current Daily Price of Various Commodities from Various Markets (Mandi)").
+//   2. RECENT DAYS: data/prices.json, the previous 7 days, downloaded by
+//      scripts/fetch-prices.mjs before every build (that dataset does not allow browser requests).
+// Each market keeps its most recent price (utils.js), so today's live price wins where it exists,
+// and crops not reported today still have a recent price. The result is saved in the browser
+// for 30 minutes. If neither source works, App.jsx shows clearly labelled sample data.
 //
 // The key comes from .env (REACT_APP_DATA_GOV_API_KEY). Create React App builds it into the
 // website, so anyone can see it with the browser tools: use a free key you can regenerate.
@@ -13,13 +15,10 @@ import { parseApiDate } from '../utils.js';
 export const COMMODITIES = ['Onion', 'Tomato', 'Potato', 'Wheat', 'Rice', 'Soyabean'];
 
 const API_KEY = (process.env.REACT_APP_DATA_GOV_API_KEY || '').trim();
-// (The two *_URL variables are only for testing; normally the real data.gov.in addresses are used.)
+// (REACT_APP_AGMARKNET_URL is only for testing; normally the real data.gov.in address is used.)
 const CURRENT_URL = process.env.REACT_APP_AGMARKNET_URL || 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070';
-const HISTORY_URL = process.env.REACT_APP_AGMARKNET_HISTORY_URL || 'https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24';
 const STATE = 'Maharashtra';
-export const HISTORY_DAYS = 7;
 const PAGE = 1000; // rows per request; bigger days are fetched page by page
-const PARALLEL = 4; // requests at the same time
 const CACHE_KEY = 'agri_prices_cache';
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
@@ -101,28 +100,6 @@ async function requestAll(url, filters) {
   return all;
 }
 
-// Run jobs with at most `limit` at the same time.
-async function pool(items, limit, job) {
-  const results = new Array(items.length);
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await job(items[i]);
-    }
-  }));
-  return results;
-}
-
-// The previous days as DD/MM/YYYY (India time), the format the API uses.
-function previousDays(days) {
-  const out = [];
-  for (let i = 1; i <= days; i++) {
-    out.push(new Date(Date.now() - i * 86400000).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }));
-  }
-  return out;
-}
-
 // ----- browser cache -----
 function readCache() {
   try {
@@ -135,36 +112,52 @@ function writeCache(records) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), records })); } catch { /* storage full or blocked */ }
 }
 
+// ----- the two sources -----
+async function liveToday() {
+  if (!API_KEY) throw new Error('No API key found. Add REACT_APP_DATA_GOV_API_KEY=your_key to the .env file, then restart "npm start" (or build again).');
+  // Two spellings of the state filter exist.
+  let rows = await requestAll(CURRENT_URL, { 'filters[state.keyword]': STATE });
+  if (rows.length === 0) rows = await requestAll(CURRENT_URL, { 'filters[state]': STATE });
+  return rows;
+}
+
+async function recentFile() {
+  let response;
+  try {
+    response = await fetch('./data/prices.json', { cache: 'no-cache' });
+  } catch {
+    throw new Error('Could not load the recent prices file.');
+  }
+  if (!response.ok || !(response.headers.get('content-type') || '').includes('json')) {
+    throw new Error('No recent prices file (it is downloaded when the website is built).');
+  }
+  const json = await response.json();
+  return json.records || [];
+}
+
 // ----- main -----
 export async function loadOfficialPrices({ refresh = false } = {}) {
-  if (!API_KEY) {
-    throw new Error('No API key found. Add REACT_APP_DATA_GOV_API_KEY=your_key to the .env file, then restart "npm start" (or build again).');
-  }
   if (!refresh) {
     const cached = readCache();
     if (cached) return { records: cached.records, fetchedAt: new Date(cached.at) };
   }
 
-  // 1. Today's feed: one query for every crop in the state. Two spellings of the state filter exist.
-  let today = await requestAll(CURRENT_URL, { 'filters[state.keyword]': STATE });
-  if (today.length === 0) today = await requestAll(CURRENT_URL, { 'filters[state]': STATE });
+  const [live, recent] = await Promise.allSettled([liveToday(), recentFile()]);
+  if (live.status === 'rejected') console.warn('AgriCompare: live prices not loaded:', live.reason.message);
+  if (recent.status === 'rejected') console.warn('AgriCompare: recent prices file not loaded:', recent.reason.message);
 
-  // 2. The previous days, one query per day. A day that fails is skipped; if the history
-  //    dataset is unavailable altogether, today's feed is still used.
-  let older = [];
-  try {
-    const perDay = await pool(previousDays(HISTORY_DAYS), PARALLEL, (date) =>
-      requestAll(HISTORY_URL, { 'filters[State.keyword]': STATE, 'filters[Arrival_Date]': date }).catch((err) => {
-        if (err.final) throw err;
-        return [];
-      }));
-    older = perDay.flat();
-  } catch (err) {
-    console.warn('AgriCompare: earlier days could not be loaded, using the latest day only.', err.message);
+  const rows = [
+    ...(live.status === 'fulfilled' ? live.value : []),
+    ...(recent.status === 'fulfilled' ? recent.value : []),
+  ];
+  const records = keep(rows);
+  if (records.length === 0) {
+    // Explain the most useful reason (e.g. a missing or rejected key).
+    const reason = live.status === 'rejected' ? live.reason.message
+      : recent.status === 'rejected' ? `No Maharashtra prices reported today yet, and ${recent.reason.message.charAt(0).toLowerCase()}${recent.reason.message.slice(1)}`
+        : 'data.gov.in returned no Maharashtra prices for these crops.';
+    throw new Error(reason);
   }
-
-  const records = keep(today.concat(older));
-  if (records.length === 0) throw new Error('data.gov.in returned no Maharashtra prices for these crops.');
   writeCache(records);
   return { records, fetchedAt: new Date() };
 }

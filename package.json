@@ -3,7 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
+    "prestart": "node scripts/fetch-prices.mjs --if-old",
     "start": "react-scripts start",
+    "fetch-prices": "node scripts/fetch-prices.mjs",
+    "prebuild": "node scripts/fetch-prices.mjs",
     "build": "react-scripts build && node scripts/to-docs.mjs"
   },
   "dependencies": {

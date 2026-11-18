@@ -1,8 +1,8 @@
-// Server-side (Node) access to the AGMARKNET dataset on data.gov.in.
-// The browser cannot call api.data.gov.in directly because the API does not send
-// CORS headers, so Node makes the request instead: the development-server proxy
-// (src/setupProxy.js) and the price download script (scripts/fetch-prices.mjs) both use this file.
-// The API key stays on your computer and is never put into the website's JavaScript.
+// Node access to the AGMARKNET datasets on data.gov.in, used by scripts/fetch-prices.mjs,
+// which runs automatically before "npm run build" (and "npm start").
+// Today's prices are loaded live by the browser (src/services/api.js); the previous days
+// come from the variety-wise dataset, which does not allow browser requests (CORS), so
+// they are downloaded here and saved as public/data/prices.json.
 
 export const RESOURCE_URL = process.env.AGMARKNET_URL || 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070'; // AGMARKNET_URL is only for testing
 
@@ -16,16 +16,17 @@ dns.setDefaultResultOrder('ipv4first');
 // Names must match AGMARKNET spelling exactly (it uses "Soyabean").
 export const COMMODITIES = ['Onion', 'Tomato', 'Potato', 'Wheat', 'Rice', 'Soyabean'];
 
-// Read the key from .env. DATA_GOV_API_KEY is preferred; the older VITE_ name still works.
+// Read the key from .env (REACT_APP_DATA_GOV_API_KEY; the older names still work).
 export function readKey(env) {
-  return (env.DATA_GOV_API_KEY || env.VITE_DATA_GOV_API_KEY || '').trim();
+  return (env.REACT_APP_DATA_GOV_API_KEY || env.DATA_GOV_API_KEY || env.VITE_DATA_GOV_API_KEY || '').trim();
 }
 
 // Historical dataset: "Variety-wise Daily Market Prices Data of Commodity" (also AGMARKNET).
 // The current feed only holds the latest day, so the last HISTORY_DAYS days are read from here
-// to give every market its most recent price.
+// to give every market its most recent price. (This dataset does not allow browser requests,
+// which is why it is downloaded by this Node script before the build.)
 export const HISTORY_URL = process.env.AGMARKNET_HISTORY_URL || 'https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24';
-export const HISTORY_DAYS = 30;
+export const HISTORY_DAYS = 7;
 const PAGE = 2000; // rows per request; more rows are fetched page by page
 
 // Download the latest prices for ALL our crops in Maharashtra.
